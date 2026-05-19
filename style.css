@@ -387,6 +387,15 @@ button { cursor: pointer; font-family: inherit; }
   font-weight: bold;
 }
 
+/* Botón eliminar carta */
+.btn-delete-carta {
+  position: absolute; top: 10px; right: 10px;
+  background: transparent; border: none; font-size: 1.2rem;
+  cursor: pointer; opacity: 0; transition: all 0.3s; z-index: 20;
+}
+.love-note:hover .btn-delete-carta { opacity: 0.4; }
+.btn-delete-carta:hover { opacity: 1 !important; transform: scale(1.2); }
+
 /* Pines para las notas */
 .note-pin {
   position: absolute; top: 15px; left: 50%; transform: translateX(-50%);

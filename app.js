@@ -127,6 +127,11 @@ class AlbumDB {
     if (error) throw error;
     return data || [];
   }
+
+  async deleteCarta(id) {
+    const { error } = await this.client.from('cartas').delete().eq('id', id);
+    if (error) throw error;
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -582,6 +587,13 @@ function createCartaElement(carta) {
   span.className = 'note-signature';
   span.textContent = carta.firma;
 
+  const btnDelete = document.createElement('button');
+  btnDelete.className = 'btn-delete-carta';
+  btnDelete.innerHTML = '🗑️';
+  btnDelete.title = 'Eliminar carta';
+  btnDelete.dataset.id = carta.id;
+
+  article.appendChild(btnDelete);
   article.appendChild(p);
   article.appendChild(span);
   
@@ -949,6 +961,27 @@ function setupModalClose(modalId, closeBtnId) {
       } finally {
         btnSave.disabled = false;
         btnSave.textContent = 'Guardar Carta 💌';
+      }
+    });
+  }
+
+  // Eliminar carta (Delegación)
+  const notesGrid = document.getElementById('notes-grid');
+  if(notesGrid) {
+    notesGrid.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.btn-delete-carta');
+      if (!btn) return;
+      
+      const id = Number(btn.dataset.id);
+      if (!id || !confirm('¿Eliminar esta carta de forma permanente?')) return;
+      
+      try {
+        await db.deleteCarta(id);
+        const cartas = await db.getAllCartas();
+        renderCartas(cartas);
+        showToast('Carta eliminada', 'info');
+      } catch (err) {
+        showToast('Error al eliminar', 'error');
       }
     });
   }
