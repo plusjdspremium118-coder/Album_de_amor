@@ -625,6 +625,7 @@ button { cursor: pointer; font-family: inherit; }
   .photo-card-media { height: 180px; }
   .modal-content { max-width: 95%; padding: 1.5rem; }
   .sakura-title { font-size: 2.2rem; }
+  #sakura-section { padding: 0 1rem; }
 }
 @media (max-width: 480px) {
   .lock-title { font-size: 2.2rem; }
@@ -636,4 +637,6 @@ button { cursor: pointer; font-family: inherit; }
   .album-title { font-size: 2.2rem; }
   .counter-number { font-size: 1.5rem; }
   .drop-zone { padding: 2rem 1rem; }
+  #sakura-section { padding: 1rem 0.5rem; }
+  .canvas-wrapper { padding: 3px; max-width: 100%; border-width: 1px; }
 }

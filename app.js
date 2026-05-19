@@ -109,6 +109,24 @@ class AlbumDB {
     if (error && error.code !== 'PGRST116') throw error; // PGRST116 ignora "no rows"
     return data ? data.valor : null;
   }
+
+  // --- CARTAS ---
+  async addCarta(data) {
+    const { error } = await this.client
+      .from('cartas')
+      .insert([data]);
+    if (error) throw error;
+  }
+
+  async getAllCartas() {
+    const { data, error } = await this.client
+      .from('cartas')
+      .select('*')
+      .order('id', { ascending: true });
+    
+    if (error) throw error;
+    return data || [];
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -353,14 +371,14 @@ const SakuraCanvas = {
   },
 
   resize() {
-    const wrapper = this.canvas.parentElement;
-    const w = wrapper.clientWidth;
-    const h = Math.max(300, Math.min(w * 0.5, 450));
+    // Tomar el ancho exacto del contenido ignorando el padding del wrapper
+    const w = this.canvas.clientWidth || this.canvas.parentElement.clientWidth - 10;
+    const h = Math.max(280, Math.min(w * 0.7, 450));
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     
     this.canvas.width = w * dpr;
     this.canvas.height = h * dpr;
-    this.canvas.style.width = w + 'px';
+    // Eliminamos el width fijo en JS para que CSS respete el 100% y no desborde
     this.canvas.style.height = h + 'px';
     
     this.offCanvas.width = w * dpr;
@@ -384,7 +402,11 @@ const SakuraCanvas = {
     const baseX = this.width / 2;
     const baseY = this.height;
 
-    ctx.shadowBlur = 4;
+    // Escalar un poco el árbol según el ancho de la pantalla
+    const isMobile = this.width < 500;
+    const branchMult = isMobile ? 1.0 : 1.5;
+
+    ctx.shadowBlur = isMobile ? 2 : 4;
     ctx.shadowColor = 'rgba(0,0,0,0.3)';
 
     const drawBranch = (x, y, angle, len, depth, maxD) => {
@@ -403,7 +425,7 @@ const SakuraCanvas = {
       ctx.quadraticCurveTo(cpX, cpY, ex, ey);
 
       ctx.strokeStyle = depth > maxD * 0.6 ? '#3b2518' : '#4d3322';
-      ctx.lineWidth = Math.max(1, depth * 1.5);
+      ctx.lineWidth = Math.max(1, depth * branchMult);
       ctx.lineCap = 'round';
       ctx.stroke();
 
@@ -413,7 +435,8 @@ const SakuraCanvas = {
       drawBranch(ex, ey, angle + spread, len * shrink, depth - 1, maxD);
     };
 
-    drawBranch(baseX, baseY, -Math.PI / 2, this.height * 0.25, 9, 9);
+    const initialLen = isMobile ? this.height * 0.22 : this.height * 0.25;
+    drawBranch(baseX, baseY, -Math.PI / 2, initialLen, 9, 9);
     ctx.shadowBlur = 0;
   },
 
@@ -451,9 +474,13 @@ const SakuraCanvas = {
     const tips = this.branchTips;
     const n = Math.min(count, tips.length);
 
+    // Ajustar el tamaño base de los girasoles según la pantalla
+    const baseSize = this.width < 500 ? 7 : 5;
+    const varSize = this.width < 500 ? 5 : 7;
+
     for (let i = 0; i < n; i++) {
       const t = tips[i % tips.length];
-      const size = 5 + rand() * 7;
+      const size = baseSize + rand() * varSize;
       const rot = rand() * Math.PI * 2;
       this.drawSunflower(ctx, t.x, t.y, size, rot);
     }
@@ -531,6 +558,52 @@ const SakuraCanvas = {
 /* ═══════════════════════════════════════
    8. GESTIÓN DE GALERÍA Y MEDIOS
    ═══════════════════════════════════════ */
+function createCartaElement(carta) {
+  const article = document.createElement('article');
+  article.className = `love-note ${carta.estilo || 'note-1'}`;
+
+  // Accesorio visual según estilo
+  if (carta.estilo === 'note-2') {
+    const tape = document.createElement('div');
+    tape.className = 'tape tape-top';
+    tape.style.setProperty('--tape-rot', '2deg');
+    article.appendChild(tape);
+  } else {
+    const pin = document.createElement('div');
+    pin.className = 'note-pin';
+    article.appendChild(pin);
+  }
+
+  const p = document.createElement('p');
+  p.className = 'note-text';
+  p.textContent = `"${carta.texto}"`;
+
+  const span = document.createElement('span');
+  span.className = 'note-signature';
+  span.textContent = carta.firma;
+
+  article.appendChild(p);
+  article.appendChild(span);
+  
+  return article;
+}
+
+function renderCartas(cartas) {
+  const container = document.getElementById('notes-grid');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  // Si no hay cartas en DB, mostrar un mensaje de que se puede empezar a escribir
+  if (cartas.length === 0) {
+    container.innerHTML = '<p style="text-align:center; width:100%; color:var(--gold-main);">Aún no hay cartas. ¡Escribe la primera!</p>';
+    return;
+  }
+
+  cartas.forEach(c => {
+    container.appendChild(createCartaElement(c));
+  });
+}
+
 function createPhotoCard(foto) {
   const card = document.createElement('article');
   card.className = 'photo-card';
@@ -672,6 +745,7 @@ function setupModalClose(modalId, closeBtnId) {
   setupModalClose('modal-add', 'modal-add-close');
   setupModalClose('modal-settings', 'modal-settings-close');
   setupModalClose('modal-viewer', 'modal-viewer-close');
+  setupModalClose('modal-add-carta', 'modal-add-carta-close');
 
   // Cargar configuración
   let anniversary = null;
@@ -687,12 +761,17 @@ function setupModalClose(modalId, closeBtnId) {
   SakuraCanvas.init();
   SakuraCanvas.startAnimation(); 
 
-  // Cargar fotos
+  // Cargar fotos y cartas
   try {
-    const fotos = await db.getAllFotos();
+    const [fotos, cartas] = await Promise.all([
+      db.getAllFotos(),
+      db.getAllCartas()
+    ]);
     renderGallery(fotos);
+    renderCartas(cartas);
   } catch (err) {
-    showToast('Error al cargar memorias', 'error');
+    showToast('Error al cargar datos desde Supabase', 'error');
+    console.error(err);
   }
 
   // Botón Configuración
@@ -827,6 +906,49 @@ function setupModalClose(modalId, closeBtnId) {
       } finally {
         btnSavePhoto.disabled = false;
         btnSavePhoto.textContent = 'Guardar Recuerdo 💕';
+      }
+    });
+  }
+
+  // ─── Modal Añadir Carta ───
+  const btnAddCarta = document.getElementById('btn-add-carta');
+  const modalAddCarta = document.getElementById('modal-add-carta');
+  if(btnAddCarta && modalAddCarta) {
+    btnAddCarta.addEventListener('click', () => {
+      document.getElementById('carta-text').value = '';
+      document.getElementById('carta-firma').value = '';
+      document.getElementById('carta-estilo').value = 'note-1';
+      openModal(modalAddCarta);
+    });
+    
+    document.getElementById('btn-save-carta').addEventListener('click', async () => {
+      const texto = document.getElementById('carta-text').value.trim();
+      const firma = document.getElementById('carta-firma').value.trim();
+      const estilo = document.getElementById('carta-estilo').value;
+      
+      if (!texto || !firma) {
+        showToast('Por favor escribe un mensaje y una firma', 'error');
+        return;
+      }
+      
+      const btnSave = document.getElementById('btn-save-carta');
+      try {
+        btnSave.disabled = true;
+        btnSave.textContent = 'Guardando...';
+        await db.addCarta({
+          texto: Sanitizer.clean(texto),
+          firma: Sanitizer.clean(firma),
+          estilo: estilo
+        });
+        const cartas = await db.getAllCartas();
+        renderCartas(cartas);
+        closeModal(modalAddCarta);
+        showToast('Carta guardada con amor 💌', 'success');
+      } catch (err) {
+        showToast('Error al guardar carta', 'error');
+      } finally {
+        btnSave.disabled = false;
+        btnSave.textContent = 'Guardar Carta 💌';
       }
     });
   }
