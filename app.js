@@ -16,72 +16,98 @@ const Sanitizer = {
 };
 
 /* ═══════════════════════════════════════
-   2. BASE DE DATOS (IndexedDB)
+   2. BASE DE DATOS (Supabase)
    ═══════════════════════════════════════ */
 class AlbumDB {
   constructor() {
-    this.dbName = 'AlbumAmorDB';
-    this.version = 2; // Incremented for video support
-    this.db = null;
+    // Inicializar cliente de Supabase (las credenciales deben coincidir con las tuyas)
+    const supabaseUrl = 'https://nnprxywyrczeeebmieqp.supabase.co';
+    const supabaseKey = 'sb_publishable_oKDib_AM9fbvFWOnJUG7Pw_1MWu-ZYf';
+    this.client = supabase.createClient(supabaseUrl, supabaseKey);
   }
 
   async init() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(this.dbName, this.version);
-      req.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains('fotos')) {
-          const s = db.createObjectStore('fotos', { keyPath: 'id', autoIncrement: true });
-          s.createIndex('fecha', 'fecha', { unique: false });
-        }
-        if (!db.objectStoreNames.contains('configuracion')) {
-          db.createObjectStore('configuracion', { keyPath: 'clave' });
-        }
-      };
-      req.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
-      req.onerror = (e) => reject(e.target.error);
-    });
+    return Promise.resolve(true);
   }
 
   async addFoto(data) {
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction('fotos', 'readwrite');
-      const r = tx.objectStore('fotos').add(data);
-      r.onsuccess = () => resolve(r.result);
-      r.onerror = () => reject(r.error);
-    });
+    const { file, tipo, descripcion, fecha } = data;
+    let imageUrl = '';
+
+    // Si hay un archivo (File) subimos a Storage
+    if (file) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `memorias/${fileName}`;
+
+      const { error: uploadError } = await this.client.storage
+        .from('album-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = this.client.storage
+        .from('album-media')
+        .getPublicUrl(filePath);
+      
+      imageUrl = publicUrlData.publicUrl;
+    }
+
+    // Insertar en la base de datos (tabla fotos)
+    const { data: dbData, error: dbError } = await this.client
+      .from('fotos')
+      .insert([
+        { imagen: imageUrl, tipo, descripcion, fecha }
+      ])
+      .select();
+
+    if (dbError) throw dbError;
+    return dbData[0].id;
   }
 
   async getAllFotos() {
-    return new Promise((resolve, reject) => {
-      const r = this.db.transaction('fotos', 'readonly').objectStore('fotos').getAll();
-      r.onsuccess = () => resolve(r.result);
-      r.onerror = () => reject(r.error);
-    });
+    const { data, error } = await this.client
+      .from('fotos')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
   }
 
   async deleteFoto(id) {
-    return new Promise((resolve, reject) => {
-      const r = this.db.transaction('fotos', 'readwrite').objectStore('fotos').delete(id);
-      r.onsuccess = () => resolve();
-      r.onerror = () => reject(r.error);
-    });
+    // Obtener la URL para borrar de storage
+    const { data: fotoData } = await this.client.from('fotos').select('imagen').eq('id', id).single();
+    
+    if (fotoData && fotoData.imagen) {
+      const urlParts = fotoData.imagen.split('/album-media/');
+      if(urlParts.length > 1) {
+        const filePath = urlParts[1];
+        await this.client.storage.from('album-media').remove([filePath]);
+      }
+    }
+
+    // Borrar de la tabla
+    const { error } = await this.client.from('fotos').delete().eq('id', id);
+    if (error) throw error;
   }
 
   async setConfig(clave, valor) {
-    return new Promise((resolve, reject) => {
-      const r = this.db.transaction('configuracion', 'readwrite').objectStore('configuracion').put({ clave, valor });
-      r.onsuccess = () => resolve();
-      r.onerror = () => reject(r.error);
-    });
+    const { error } = await this.client
+      .from('configuracion')
+      .upsert({ clave, valor });
+    if (error) throw error;
   }
 
   async getConfig(clave) {
-    return new Promise((resolve, reject) => {
-      const r = this.db.transaction('configuracion', 'readonly').objectStore('configuracion').get(clave);
-      r.onsuccess = () => resolve(r.result ? r.result.valor : null);
-      r.onerror = () => reject(r.error);
-    });
+    const { data, error } = await this.client
+      .from('configuracion')
+      .select('valor')
+      .eq('clave', clave)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 ignora "no rows"
+    return data ? data.valor : null;
   }
 }
 
@@ -505,15 +531,6 @@ const SakuraCanvas = {
 /* ═══════════════════════════════════════
    8. GESTIÓN DE GALERÍA Y MEDIOS
    ═══════════════════════════════════════ */
-function readFileAsDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target.result);
-    reader.onerror = (e) => reject(e);
-    reader.readAsDataURL(file);
-  });
-}
-
 function createPhotoCard(foto) {
   const card = document.createElement('article');
   card.className = 'photo-card';
@@ -704,13 +721,12 @@ function setupModalClose(modalId, closeBtnId) {
   }
 
   // ─── Botón Añadir Recuerdo ───
-  let pendingFileData = null;
-  let pendingFileType = null;
+  let pendingFile = null;
 
   const btnAddMemory = document.getElementById('btn-add-memory');
   if(btnAddMemory) {
     btnAddMemory.addEventListener('click', () => {
-      pendingFileData = null; pendingFileType = null;
+      pendingFile = null;
       document.getElementById('photo-input').value = '';
       document.getElementById('photo-description').value = '';
       document.getElementById('photo-date').value = new Date().toISOString().split('T')[0];
@@ -748,16 +764,17 @@ function setupModalClose(modalId, closeBtnId) {
       return;
     }
     
-    // Para videos, recomendamos tamaños pequeños por IndexedDB
-    if(file.size > 15 * 1024 * 1024) {
-      showToast('El archivo es demasiado grande. Máximo recomendado: 15MB', 'error');
+    // Máximo 20MB para asegurar subidas fluidas en Supabase
+    if(file.size > 20 * 1024 * 1024) {
+      showToast('El archivo es demasiado grande. Máximo 20MB', 'error');
       return;
     }
 
     try {
       showToast('Procesando archivo...', 'info');
-      pendingFileData = await readFileAsDataURL(file);
-      pendingFileType = file.type;
+      pendingFile = file; // Guardar archivo crudo
+      
+      const previewUrl = URL.createObjectURL(file);
       
       const imgPreview = document.getElementById('photo-preview-img');
       const vidPreview = document.getElementById('video-preview');
@@ -765,16 +782,16 @@ function setupModalClose(modalId, closeBtnId) {
       if (file.type.startsWith('video/')) {
         imgPreview.hidden = true;
         vidPreview.hidden = false;
-        vidPreview.src = pendingFileData;
+        vidPreview.src = previewUrl;
       } else {
         vidPreview.hidden = true;
         imgPreview.hidden = false;
-        imgPreview.src = pendingFileData;
+        imgPreview.src = previewUrl;
       }
       
       document.getElementById('photo-preview-container').classList.add('has-image');
       document.getElementById('btn-save-photo').disabled = false;
-      showToast('Archivo listo', 'success');
+      showToast('Archivo listo para guardar', 'success');
     } catch (err) {
       showToast('Error al procesar archivo', 'error');
     }
@@ -784,15 +801,19 @@ function setupModalClose(modalId, closeBtnId) {
   const btnSavePhoto = document.getElementById('btn-save-photo');
   if(btnSavePhoto) {
     btnSavePhoto.addEventListener('click', async () => {
-      if (!pendingFileData) { showToast('Selecciona un archivo primero', 'error'); return; }
+      if (!pendingFile) { showToast('Selecciona un archivo primero', 'error'); return; }
       
       const desc = document.getElementById('photo-description').value.trim();
       const fecha = document.getElementById('photo-date').value || new Date().toISOString().split('T')[0];
 
       try {
+        btnSavePhoto.disabled = true;
+        btnSavePhoto.textContent = 'Subiendo... ⏳';
+        showToast('Subiendo archivo a la nube...', 'info');
+
         await db.addFoto({
-          imagen: pendingFileData,
-          tipo: pendingFileType,
+          file: pendingFile,
+          tipo: pendingFile.type,
           descripcion: Sanitizer.clean(desc),
           fecha: fecha
         });
@@ -800,10 +821,12 @@ function setupModalClose(modalId, closeBtnId) {
         renderGallery(fotos);
         closeModal(document.getElementById('modal-add'));
         showToast('Memoria guardada 🌻', 'success');
-        pendingFileData = null;
-        pendingFileType = null;
+        pendingFile = null;
       } catch (err) {
-        showToast('Error al guardar: la base de datos podría estar llena.', 'error');
+        showToast('Error al guardar en la nube: ' + err.message, 'error');
+      } finally {
+        btnSavePhoto.disabled = false;
+        btnSavePhoto.textContent = 'Guardar Recuerdo 💕';
       }
     });
   }
