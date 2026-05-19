@@ -54,6 +54,24 @@ img, video { max-width: 100%; display: block; }
 button { cursor: pointer; font-family: inherit; }
 [hidden] { display: none !important; }
 
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar { width: 12px; background: var(--bg-deep); }
+::-webkit-scrollbar-track {
+  background: rgba(10, 0, 5, 0.5); border-left: 1px solid var(--gold-dim);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-light); border-radius: 10px;
+  border: 2px solid var(--bg-deep);
+  box-shadow: inset 0 0 10px rgba(201, 169, 110, 0.4);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--gold-main); }
+
+/* Glow en los bordes de la pantalla */
+body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9000;
+  box-shadow: inset 0 0 35px rgba(201, 169, 110, 0.15), inset 0 0 10px rgba(139, 37, 53, 0.5);
+}
+
 /* ══════════════════════════════════════════
    PANTALLA DE BLOQUEO (PIN)
    ══════════════════════════════════════════ */
@@ -226,29 +244,40 @@ button { cursor: pointer; font-family: inherit; }
 
 /* Decoraciones esparcidas */
 .bg-decorations { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-.deco-clipping {
-  position: absolute; background: #d4c4a8; opacity: 0.15;
-  box-shadow: 2px 2px 10px rgba(0,0,0,0.5); border-radius: 2px;
-  background-image: repeating-linear-gradient(0deg, transparent, transparent 8px, rgba(0,0,0,0.2) 8px, rgba(0,0,0,0.2) 9px);
+/* 🧩 SCRAPBOOK COLLAGE ELEMENTS */
+.scrap-paper {
+  position: absolute; padding: 20px; box-shadow: 2px 5px 15px rgba(0,0,0,0.6); z-index: 0; opacity: 0.85;
 }
-.deco-clip-1 { width: 120px; height: 160px; top: 10%; left: 5%; transform: rotate(-8deg); }
-.deco-clip-2 { width: 150px; height: 100px; bottom: 15%; right: 8%; transform: rotate(12deg); }
-.deco-clip-3 { width: 90px; height: 200px; top: 40%; left: 85%; transform: rotate(5deg); }
-
-.deco-note {
-  position: absolute; background: #f0d9b5; opacity: 0.2;
-  box-shadow: 2px 3px 8px rgba(0,0,0,0.4);
+.scrap-lined {
+  width: 260px; height: 220px; background-color: var(--bg-parchment);
+  background-image: repeating-linear-gradient(transparent 0px, transparent 24px, #d1bfae 24px, #d1bfae 25px);
+  clip-path: polygon(0% 5%, 5% 0%, 15% 2%, 25% 0%, 35% 3%, 45% 0%, 55% 4%, 65% 0%, 75% 3%, 85% 0%, 95% 4%, 100% 0%, 98% 10%, 100% 20%, 97% 30%, 100% 40%, 98% 50%, 100% 60%, 97% 70%, 100% 80%, 98% 90%, 100% 100%, 95% 97%, 85% 100%, 75% 96%, 65% 100%, 55% 98%, 45% 100%, 35% 97%, 25% 100%, 15% 96%, 5% 100%, 0% 95%, 2% 85%, 0% 75%, 3% 65%, 0% 55%, 2% 45%, 0% 35%, 3% 25%, 0% 15%);
 }
-.deco-note-1 { width: 80px; height: 80px; top: 25%; right: 12%; transform: rotate(-15deg); }
-.deco-note-2 { width: 100px; height: 100px; bottom: 20%; left: 10%; transform: rotate(7deg); }
+.scrap-gold {
+  width: 220px; height: 260px; background-color: var(--gold-dim); color: var(--bg-deep);
+  clip-path: polygon(2% 0, 100% 5%, 95% 100%, 0 98%, 5% 50%); display: flex; align-items: center; justify-content: center;
+}
+.scrap-handwriting { font-family: var(--font-hand); font-size: 1.8rem; line-height: 1.2; transform: rotate(-5deg); opacity: 0.9; }
 
-.deco-flower { position: absolute; opacity: 0.18; filter: grayscale(20%) sepia(50%); }
-.deco-f1 { font-size: 4rem; top: 5%; left: 15%; transform: rotate(25deg); }
-.deco-f2 { font-size: 5rem; top: 80%; left: 5%; transform: rotate(-15deg); }
-.deco-f3 { font-size: 3.5rem; top: 15%; right: 5%; transform: rotate(45deg); }
-.deco-f4 { font-size: 4.5rem; bottom: 5%; right: 15%; transform: rotate(-30deg); }
-.deco-f5 { font-size: 3rem; top: 50%; left: 2%; transform: rotate(10deg); }
-.deco-f6 { font-size: 3rem; top: 60%; right: 3%; transform: rotate(-20deg); }
+.scrap-magazine {
+  position: absolute; z-index: 0; font-family: 'Courier New', Courier, monospace; font-weight: bold; font-size: 2.8rem; line-height: 1.2; opacity: 0.9;
+}
+.scrap-magazine span {
+  display: inline-block; padding: 2px 10px; margin: 2px; box-shadow: 2px 2px 6px rgba(0,0,0,0.6); border: 1px solid rgba(0,0,0,0.3);
+}
+
+.scrap-xoxo {
+  position: absolute; font-family: var(--font-hand); font-size: 3.5rem; color: #a82b3d; font-weight: bold; z-index: 0; opacity: 0.7;
+}
+
+.scrap-sticker {
+  position: absolute; z-index: 0; opacity: 0.85; filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.6));
+}
+
+.deco-flower { position: absolute; font-size: 2rem; opacity: 0.4; z-index: 1; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5)); }
+.deco-f1 { top: 15%; left: 45%; transform: rotate(15deg); }
+.deco-f2 { top: 85%; right: 10%; transform: rotate(-20deg); }
+.deco-f6 { bottom: 25%; left: 50%; transform: rotate(-5deg); }
 
 /* Click Floats */
 .click-floats { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
@@ -629,7 +658,7 @@ button { cursor: pointer; font-family: inherit; }
   .counter-grid { grid-template-columns: repeat(3, 1fr); }
   .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2.5rem; }
   .notes-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
-  .deco-flower, .deco-clipping, .deco-note { display: none; }
+  .deco-flower, .scrap-paper, .scrap-magazine, .scrap-xoxo, .scrap-sticker { opacity: 0.15; transform: scale(0.6); }
   .photo-card { padding: 10px; }
   .photo-card-media { height: 180px; }
   .modal-content { max-width: 95%; padding: 1.5rem; }
