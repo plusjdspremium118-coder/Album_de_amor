@@ -132,6 +132,57 @@ class AlbumDB {
     const { error } = await this.client.from('cartas').delete().eq('id', id);
     if (error) throw error;
   }
+
+  // --- RESPUESTAS DIARIAS ---
+  async getPreguntaDelDia(diaIndex) {
+    const { data, error } = await this.client
+      .from('preguntas')
+      .select('pregunta')
+      .eq('dia_index', diaIndex)
+      .single();
+    if (error) {
+      if (error.code === 'PGRST116') return null; // No encontrada
+      throw error;
+    }
+    return data.pregunta;
+  }
+
+  async addRespuestaDiaria(data) {
+    const { error } = await this.client
+      .from('respuestas_diarias')
+      .insert([data]);
+    if (error) throw error;
+  }
+
+  async getRespuestasDiarias(diaIndex) {
+    const { data, error } = await this.client
+      .from('respuestas_diarias')
+      .select('*')
+      .eq('dia_index', diaIndex)
+      .order('created_at', { ascending: true });
+    
+    if (error) throw error;
+    return data || [];
+  }
+
+  // --- NOTIFICACIONES ---
+  async addNotificacion(data) {
+    const { error } = await this.client
+      .from('notificaciones')
+      .insert([data]);
+    if (error) throw error;
+  }
+
+  async getNotificaciones() {
+    const { data, error } = await this.client
+      .from('notificaciones')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    if (error) throw error;
+    return data || [];
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -244,6 +295,12 @@ const PinSystem = {
         lockScreen.style.visibility = 'hidden';
         app.hidden = false;
         
+        // Re-renderizar el canvas ahora que app es visible y tiene dimensiones reales
+        if (ConstellationCanvas.canvas) {
+          ConstellationCanvas.resize();
+          ConstellationCanvas.generateStars();
+        }
+        
         setTimeout(() => {
           bloom.classList.remove('active');
           setTimeout(() => bloom.hidden = true, 1500);
@@ -352,46 +409,44 @@ const Counter = {
 };
 
 /* ═══════════════════════════════════════
-   7. CEREZO EN CANVAS (Se mantiene el original por requisito)
+   7. CONSTELACIÓN ESTELAR (CANVAS)
    ═══════════════════════════════════════ */
-const SakuraCanvas = {
+const ConstellationCanvas = {
   canvas: null, ctx: null, width: 0, height: 0,
-  branchTips: [], petals: [], animId: null,
-
-  offCanvas: null, offCtx: null,
+  stars: [], animId: null, mouse: { x: -1000, y: -1000 },
 
   init() {
-    this.canvas = document.getElementById('sakura-canvas');
+    this.canvas = document.getElementById('constellation-canvas');
     if(!this.canvas) return;
     this.ctx = this.canvas.getContext('2d');
     
-    this.offCanvas = document.createElement('canvas');
-    this.offCtx = this.offCanvas.getContext('2d');
-
     this.resize();
     window.addEventListener('resize', () => { 
       this.resize(); 
-      this.preRender(); 
+      this.generateStars();
+    });
+
+    this.canvas.addEventListener('mousemove', (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      this.mouse.x = e.clientX - rect.left;
+      this.mouse.y = e.clientY - rect.top;
+    });
+    this.canvas.addEventListener('mouseleave', () => {
+      this.mouse.x = -1000; this.mouse.y = -1000;
     });
   },
 
   resize() {
-    // Tomar el ancho exacto del contenido ignorando el padding del wrapper
-    const w = this.canvas.clientWidth || this.canvas.parentElement.clientWidth - 10;
-    const h = Math.max(280, Math.min(w * 0.7, 450));
+    const w = this.canvas.parentElement.clientWidth - 10;
+    // Un ratio de 3:2 o 16:9 hace un rectángulo armonioso. Usaremos 3:2.
+    const h = w * (2 / 3);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     
     this.canvas.width = w * dpr;
     this.canvas.height = h * dpr;
-    // Eliminamos el width fijo en JS para que CSS respete el 100% y no desborde
     this.canvas.style.height = h + 'px';
     
-    this.offCanvas.width = w * dpr;
-    this.offCanvas.height = h * dpr;
-    
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    
     this.width = w; this.height = h;
   },
 
@@ -400,159 +455,110 @@ const SakuraCanvas = {
     return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
   },
 
-  generateTree(ctx) {
-    this.branchTips = [];
-    const rand = this.seededRandom(42);
-    const tips = this.branchTips;
-    const baseX = this.width / 2;
-    const baseY = this.height;
-
-    // Escalar un poco el árbol según el ancho de la pantalla
-    const isMobile = this.width < 500;
-    const branchMult = isMobile ? 1.0 : 1.5;
-
-    ctx.shadowBlur = isMobile ? 2 : 4;
-    ctx.shadowColor = 'rgba(0,0,0,0.3)';
-
-    const drawBranch = (x, y, angle, len, depth, maxD) => {
-      if (depth === 0 || len < 3) { tips.push({ x, y }); return; }
-      
-      const curve = (rand() - 0.5) * 0.3;
-      angle += curve;
-
-      const ex = x + Math.cos(angle) * len;
-      const ey = y + Math.sin(angle) * len;
-      
-      ctx.beginPath();
-      ctx.moveTo(x, y); 
-      const cpX = x + Math.cos(angle - curve) * (len * 0.6);
-      const cpY = y + Math.sin(angle - curve) * (len * 0.6);
-      ctx.quadraticCurveTo(cpX, cpY, ex, ey);
-
-      ctx.strokeStyle = depth > maxD * 0.6 ? '#3b2518' : '#4d3322';
-      ctx.lineWidth = Math.max(1, depth * branchMult);
-      ctx.lineCap = 'round';
-      ctx.stroke();
-
-      const spread = 0.3 + rand() * 0.25;
-      const shrink = 0.72 + rand() * 0.08; 
-      drawBranch(ex, ey, angle - spread, len * shrink, depth - 1, maxD);
-      drawBranch(ex, ey, angle + spread, len * shrink, depth - 1, maxD);
-    };
-
-    const initialLen = isMobile ? this.height * 0.22 : this.height * 0.25;
-    drawBranch(baseX, baseY, -Math.PI / 2, initialLen, 9, 9);
-    ctx.shadowBlur = 0;
-  },
-
-  drawSunflower(ctx, x, y, size, rotation) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(rotation);
-
-    const petalCount = 12;
-    ctx.fillStyle = '#f8cd24'; 
-    for (let i = 0; i < petalCount; i++) {
-      ctx.save();
-      ctx.rotate((i * Math.PI * 2) / petalCount);
-      ctx.beginPath();
-      ctx.ellipse(0, -size * 0.55, size * 0.25, size * 0.6, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    ctx.beginPath();
-    ctx.arc(0, 0, size * 0.4, 0, Math.PI * 2);
-    ctx.fillStyle = '#4a2b0f';
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(0, 0, size * 0.25, 0, Math.PI * 2);
-    ctx.fillStyle = '#301c0a';
-    ctx.fill();
-
-    ctx.restore();
-  },
-
-  drawFlowers(ctx, count) {
-    const rand = this.seededRandom(123);
-    const tips = this.branchTips;
-    const n = Math.min(count, tips.length);
-
-    // Ajustar el tamaño base de los girasoles según la pantalla
-    const baseSize = this.width < 500 ? 7 : 5;
-    const varSize = this.width < 500 ? 5 : 7;
-
-    for (let i = 0; i < n; i++) {
-      const t = tips[i % tips.length];
-      const size = baseSize + rand() * varSize;
-      const rot = rand() * Math.PI * 2;
-      this.drawSunflower(ctx, t.x, t.y, size, rot);
-    }
-  },
-
-  preRender() {
-    if (!this.offCtx) return;
+  generateStars() {
     const totalDays = Counter.getTotalDays();
-    this.offCtx.clearRect(0, 0, this.width, this.height);
-    this.generateTree(this.offCtx);
-    if (totalDays > 0) this.drawFlowers(this.offCtx, totalDays);
-    
-    const caption = document.getElementById('sakura-caption');
+    const caption = document.getElementById('constellation-caption');
     if (caption) {
-      if (totalDays > 0) Sanitizer.setTextSafe(caption, `🌻 ${totalDays} días llenos de amor y crecimiento`);
-      else Sanitizer.setTextSafe(caption, 'Configura la fecha para ver florecer nuestros girasoles');
+      if (totalDays > 0) Sanitizer.setTextSafe(caption, `✨ ${totalDays} estrellas iluminan nuestro universo`);
+      else Sanitizer.setTextSafe(caption, 'Configura la fecha para encender las estrellas');
     }
-  },
 
-  initPetals() {
-    this.petals = [];
-    for (let i = 0; i < 25; i++) {
-      this.petals.push({
-        x: Math.random() * this.width,
-        y: Math.random() * this.height,
-        size: 2 + Math.random() * 3,
-        speedY: 0.6 + Math.random() * 1.2,
-        speedX: (Math.random() - 0.5) * 1.5,
-        wobble: Math.random() * Math.PI * 2,
-        wobbleSpeed: 0.02 + Math.random() * 0.04
+    this.stars = [];
+    const count = Math.min(totalDays, 450); // Límite para no sobrecargar el navegador
+    const rand = this.seededRandom(12345);
+
+    for (let i = 0; i < count; i++) {
+      let x, y;
+      
+      // 80% de las estrellas forman el corazón, 20% espolvoreadas al azar
+      if (rand() > 0.2) {
+        let inside = false;
+        let attempts = 0;
+        while(!inside && attempts < 50) {
+          // Coordenadas matemáticas para el corazón: x entre -1.5 y 1.5, y entre -1.5 y 1.5
+          const px = (rand() * 3) - 1.5;
+          const py = (rand() * 3) - 1.5;
+          
+          // Ecuación del corazón: (x^2 + y^2 - 1)^3 - x^2 * y^3 <= 0
+          const eq = Math.pow(px*px + py*py - 1, 3) - (px*px * Math.pow(py, 3));
+          
+          if (eq <= 0) { 
+             // Escalar basándonos en la dimensión menor (altura) para no estirar el corazón
+             const scale = Math.min(this.width, this.height) * 0.45;
+             x = (this.width / 2) + (px * scale);
+             y = (this.height / 2) - (py * scale) - (this.height * 0.05); // Centrar verticalmente
+             inside = true;
+          }
+          attempts++;
+        }
+      } else {
+        // Estrellas de fondo aleatorias
+        x = rand() * this.width;
+        y = rand() * this.height;
+      }
+      
+      this.stars.push({
+        x: x || rand() * this.width,
+        y: y || rand() * this.height,
+        size: rand() * 1.5 + 0.8,
+        twinklePhase: rand() * Math.PI * 2,
+        twinkleSpeed: rand() * 0.03 + 0.01
       });
     }
   },
 
-  animatePetals() {
-    const ctx = this.ctx;
-    for (const p of this.petals) {
-      p.y += p.speedY;
-      p.x += p.speedX + Math.sin(p.wobble) * 0.5;
-      p.wobble += p.wobbleSpeed;
-      
-      if (p.y > this.height + 15) { 
-        p.y = -15; 
-        p.x = Math.random() * this.width; 
-      }
-      if (p.x < -15) p.x = this.width + 15;
-      if (p.x > this.width + 15) p.x = -15;
-
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.wobble);
-      
-      ctx.beginPath();
-      ctx.ellipse(0, 0, p.size * 0.5, p.size, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(248, 205, 36, 0.75)';
-      ctx.fill();
-      ctx.restore();
-    }
-  },
-
   startAnimation() {
-    this.preRender();
-    this.initPetals();
+    this.generateStars();
+    const ctx = this.ctx;
+    
     const loop = () => {
-      this.ctx.clearRect(0, 0, this.width, this.height);
-      this.ctx.drawImage(this.offCanvas, 0, 0, this.width, this.height);
-      this.animatePetals();
+      ctx.clearRect(0, 0, this.width, this.height);
+      
+      ctx.lineWidth = 0.6;
+      for (let i = 0; i < this.stars.length; i++) {
+        const s1 = this.stars[i];
+        
+        // Interacción con el cursor
+        const dx = this.mouse.x - s1.x;
+        const dy = this.mouse.y - s1.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 70) {
+          ctx.beginPath();
+          ctx.moveTo(s1.x, s1.y);
+          ctx.lineTo(this.mouse.x, this.mouse.y);
+          ctx.strokeStyle = `rgba(201,169,110,${1 - dist/70})`;
+          ctx.stroke();
+        }
+
+        // Conectar estrellas cercanas
+        for (let j = i + 1; j < this.stars.length; j++) {
+          const s2 = this.stars[j];
+          const ddx = s1.x - s2.x;
+          const ddy = s1.y - s2.y;
+          const d = ddx*ddx + ddy*ddy;
+          if (d < 1200) {
+            ctx.beginPath();
+            ctx.moveTo(s1.x, s1.y);
+            ctx.lineTo(s2.x, s2.y);
+            ctx.strokeStyle = 'rgba(201,169,110,0.12)';
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Dibujar estrellas brillantes
+      for (const s of this.stars) {
+        s.twinklePhase += s.twinkleSpeed;
+        const alpha = Math.abs(Math.sin(s.twinklePhase)) * 0.7 + 0.3;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 230, 150, ${alpha})`;
+        ctx.shadowBlur = s.size * 4;
+        ctx.shadowColor = 'rgba(201,169,110,0.8)';
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+
       this.animId = requestAnimationFrame(loop);
     };
     if(this.animId) cancelAnimationFrame(this.animId);
@@ -561,7 +567,320 @@ const SakuraCanvas = {
 };
 
 /* ═══════════════════════════════════════
-   8. GESTIÓN DE GALERÍA Y MEDIOS
+   8. LUCIÉRNAGAS DORADAS
+   ═══════════════════════════════════════ */
+const Fireflies = {
+  init() {
+    const container = document.getElementById('fireflies');
+    if (!container) return;
+    for (let i = 0; i < 25; i++) {
+      const fly = document.createElement('div');
+      fly.className = 'firefly';
+      fly.style.setProperty('--x', Math.random() * 100 + 'vw');
+      fly.style.setProperty('--y', Math.random() * 100 + 'vh');
+      fly.style.setProperty('--dur', 10 + Math.random() * 20 + 's');
+      fly.style.setProperty('--delay', Math.random() * 15 + 's');
+      fly.style.setProperty('--drift-x', (Math.random() - 0.5) * 300 + 'px');
+      fly.style.setProperty('--drift-y', (Math.random() - 0.5) * 300 + 'px');
+      fly.style.setProperty('--size', 2 + Math.random() * 4 + 'px');
+      container.appendChild(fly);
+    }
+  }
+};
+
+/* ═══════════════════════════════════════
+   9. SCROLL REVEAL
+   ═══════════════════════════════════════ */
+const ScrollReveal = {
+  init() {
+    const sections = document.querySelectorAll('#app > section');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    sections.forEach(s => {
+      s.classList.add('reveal-section');
+      observer.observe(s);
+    });
+  }
+};
+
+/* ═══════════════════════════════════════
+   10. FRASES DE AMOR CON TYPEWRITER
+   ═══════════════════════════════════════ */
+const LoveQuotes = {
+  quotes: [
+    'En tu mirada encontré mi hogar',
+    'Cada día contigo es mi día favorito',
+    'Eres la razón de mis sonrisas más sinceras',
+    'Contigo aprendí que el amor no se busca, se encuentra',
+    'Mi corazón late al ritmo de tu nombre',
+    'Eres mi persona favorita en todo el universo',
+    'Gracias por elegirme todos los días',
+    'Tu amor es el regalo más bonito de mi vida',
+    'A tu lado todo es más brillante',
+    'Eres mi calma en medio del caos',
+    'Te amaré en esta vida y en todas las que vengan',
+    'Contigo hasta el silencio es perfecto',
+    'Eres el sueño del que no quiero despertar',
+    'Cada momento contigo es un tesoro',
+    'Mi lugar favorito es donde tú estás'
+  ],
+  currentIndex: 0,
+  charIndex: 0,
+  isDeleting: false,
+  textEl: null,
+  timeoutId: null,
+
+  init() {
+    this.textEl = document.getElementById('quote-text');
+    if (!this.textEl) return;
+    this.currentIndex = Math.floor(Math.random() * this.quotes.length);
+    this.type();
+  },
+
+  type() {
+    const current = this.quotes[this.currentIndex];
+    if (!this.isDeleting) {
+      this.charIndex++;
+      this.textEl.textContent = current.substring(0, this.charIndex);
+      if (this.charIndex === current.length) {
+        this.timeoutId = setTimeout(() => { this.isDeleting = true; this.type(); }, 4000);
+        return;
+      }
+      this.timeoutId = setTimeout(() => this.type(), 50 + Math.random() * 40);
+    } else {
+      this.charIndex--;
+      this.textEl.textContent = current.substring(0, this.charIndex);
+      if (this.charIndex === 0) {
+        this.isDeleting = false;
+        this.currentIndex = (this.currentIndex + 1) % this.quotes.length;
+        this.timeoutId = setTimeout(() => this.type(), 500);
+        return;
+      }
+      this.timeoutId = setTimeout(() => this.type(), 25);
+    }
+  }
+};
+
+/* ═══════════════════════════════════════
+   11. PREGUNTA DEL DÍA
+   ═══════════════════════════════════════ */
+const DailyQuestion = {
+  async init(db) {
+    const textEl = document.getElementById('daily-question-text');
+    const badgeEl = document.getElementById('question-day-badge');
+    const container = document.getElementById('daily-question-interaction');
+    if (!textEl || !container) return;
+
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now - start) / 86400000);
+    const diaIndex = (dayOfYear - 1 + 365) % 365;
+
+    let preguntaTexto = '¿Qué es lo que más amas de nosotros?';
+    try {
+      const q = await db.getPreguntaDelDia(diaIndex);
+      if (q) preguntaTexto = q;
+    } catch(err) {
+      console.warn("No se pudo cargar la pregunta de la base de datos.", err);
+    }
+
+    textEl.textContent = preguntaTexto;
+    if (badgeEl) badgeEl.textContent = `Día ${diaIndex + 1}/365`;
+
+    // Cargar respuestas de hoy
+    let respuestas = [];
+    try {
+      respuestas = await db.getRespuestasDiarias(diaIndex);
+    } catch(err) {
+      console.warn("No se pudieron cargar respuestas (quizás falta la tabla).", err);
+    }
+
+    const miNombre = localStorage.getItem('mi_nombre_album') || '';
+    const yoRespondi = respuestas.find(r => r.autor === miNombre && miNombre !== '');
+
+    container.innerHTML = '';
+
+    if (respuestas.length >= 2) {
+      // ESTADO 3: Ambos respondieron
+      const html = `
+        <div class="dq-answers">
+          ${respuestas.map(r => `
+            <div class="dq-answer-box">
+              <h4 class="dq-answer-author">${Sanitizer.clean(r.autor)} dijo:</h4>
+              <p class="dq-answer-text">${Sanitizer.clean(r.respuesta)}</p>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      container.innerHTML = html;
+    } 
+    else if (yoRespondi) {
+      // ESTADO 2: Yo respondí, esperando al otro
+      const html = `
+        <div class="dq-answers">
+          <div class="dq-answer-box">
+            <h4 class="dq-answer-author">Tu respuesta (${Sanitizer.clean(miNombre)}):</h4>
+            <p class="dq-answer-text">${Sanitizer.clean(yoRespondi.respuesta)}</p>
+          </div>
+          <div class="dq-locked">
+            <span class="dq-locked-icon">🔒</span>
+            <p class="dq-locked-msg">Esperando la respuesta de tu pareja para revelar el secreto...</p>
+          </div>
+        </div>
+      `;
+      container.innerHTML = html;
+    } 
+    else {
+      // ESTADO 1: Nadie o solo el otro ha respondido
+      const form = document.createElement('div');
+      form.className = 'dq-form';
+      
+      const isOtherWaiting = respuestas.length === 1;
+      
+      form.innerHTML = `
+        ${isOtherWaiting ? `<p style="color:var(--gold-main);text-align:center;margin-bottom:1rem;font-family:var(--font-title);">✨ ¡Tu pareja ya respondió! Responde para revelar su secreto.</p>` : ''}
+        <div class="dq-input-group">
+          <label>¿Quién eres?</label>
+          <input type="text" id="dq-autor" class="dq-input-name" placeholder="Tu nombre o apodo" value="${Sanitizer.clean(miNombre)}" maxlength="50">
+        </div>
+        <div class="dq-input-group">
+          <label>Tu Respuesta</label>
+          <textarea id="dq-respuesta" class="dq-input-answer" placeholder="Escribe desde el corazón..."></textarea>
+        </div>
+        <button id="btn-send-dq" class="btn-save">Enviar Respuesta 💕</button>
+      `;
+      
+      container.appendChild(form);
+
+      document.getElementById('btn-send-dq').addEventListener('click', async () => {
+        const autor = document.getElementById('dq-autor').value.trim();
+        const resp = document.getElementById('dq-respuesta').value.trim();
+        if (!autor || !resp) {
+          showToast('Por favor, completa ambos campos', 'error');
+          return;
+        }
+
+        const btn = document.getElementById('btn-send-dq');
+        try {
+          btn.disabled = true;
+          btn.textContent = 'Enviando...';
+          localStorage.setItem('mi_nombre_album', autor);
+          
+          await db.addRespuestaDiaria({
+            dia_index: diaIndex,
+            autor: Sanitizer.clean(autor),
+            respuesta: Sanitizer.clean(resp)
+          });
+          
+          // Enviar notificación de que se respondió
+          await db.addNotificacion({
+            tipo: 'pregunta',
+            mensaje: `${Sanitizer.clean(autor)} respondió a la Pregunta del Día 💭`
+          });
+
+          showToast('¡Respuesta guardada!', 'success');
+          // Recargar sección
+          this.init(db);
+        } catch (err) {
+          showToast('Error al guardar respuesta', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Enviar Respuesta 💕';
+        }
+      });
+    }
+  }
+};
+
+/* ═══════════════════════════════════════
+   12. SCROLL UI (Progress + Back to Top)
+   ═══════════════════════════════════════ */
+const ScrollUI = {
+  init() {
+    const progressBar = document.getElementById('scroll-progress');
+    const btnTop = document.getElementById('btn-top');
+    if (!progressBar && !btnTop) return;
+
+    window.addEventListener('scroll', () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      if (progressBar) progressBar.style.width = pct + '%';
+      if (btnTop) btnTop.hidden = scrollTop < 500;
+    }, { passive: true });
+
+    if (btnTop) {
+      btnTop.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+  }
+};
+
+/* ═══════════════════════════════════════
+   13. EASTER EGG
+   ═══════════════════════════════════════ */
+const EasterEgg = {
+  clickCount: 0,
+  timeout: null,
+
+  init() {
+    const title = document.querySelector('.album-title');
+    if (!title) return;
+    title.style.cursor = 'pointer';
+    title.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.clickCount++;
+      if (this.timeout) clearTimeout(this.timeout);
+      this.timeout = setTimeout(() => this.clickCount = 0, 3000);
+      if (this.clickCount >= 7) {
+        this.clickCount = 0;
+        this.trigger();
+      }
+    });
+  },
+
+  trigger() {
+    const overlay = document.getElementById('easter-egg-overlay');
+    if (!overlay) return;
+    overlay.hidden = false;
+    overlay.innerHTML = '';
+
+    // Explosión de corazones
+    const emojis = ['❤️', '💛', '🌻', '💕', '✨', '💝', '💖', '🌟'];
+    for (let i = 0; i < 35; i++) {
+      const heart = document.createElement('div');
+      heart.className = 'easter-heart';
+      heart.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      heart.style.setProperty('--tx', (Math.random() - 0.5) * window.innerWidth + 'px');
+      heart.style.setProperty('--ty', (Math.random() - 0.5) * window.innerHeight + 'px');
+      heart.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+      heart.style.setProperty('--scale', 1 + Math.random() * 3);
+      heart.style.setProperty('--delay', Math.random() * 0.5 + 's');
+      overlay.appendChild(heart);
+    }
+
+    const msg = document.createElement('div');
+    msg.className = 'easter-egg-message';
+    msg.innerHTML = '<p class="easter-egg-text">Cada segundo contigo es un regalo que el universo me dio.<br>Eres mi todo. 💛🌻</p>';
+    overlay.appendChild(msg);
+
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    setTimeout(() => {
+      overlay.classList.remove('active');
+      setTimeout(() => { overlay.hidden = true; overlay.innerHTML = ''; }, 1500);
+    }, 6000);
+  }
+};
+
+/* ═══════════════════════════════════════
+   14. GESTIÓN DE GALERÍA Y MEDIOS
    ═══════════════════════════════════════ */
 function createCartaElement(carta) {
   const article = document.createElement('article');
@@ -706,7 +1025,122 @@ function renderGallery(fotos) {
 }
 
 /* ═══════════════════════════════════════
-   9. MODALES
+   15. NOTIFICACIONES
+   ═══════════════════════════════════════ */
+const Notifications = {
+  async init(db) {
+    const btn = document.getElementById('btn-notifications');
+    const badge = document.getElementById('notification-badge');
+    const modal = document.getElementById('modal-notificaciones');
+    const list = document.getElementById('notificaciones-list');
+    if (!btn || !modal) return;
+
+    setupModalClose('modal-notificaciones', 'modal-notificaciones-close');
+
+    btn.addEventListener('click', () => {
+      openModal(modal);
+      badge.hidden = true;
+      localStorage.setItem('last_read_notifications', Date.now().toString());
+    });
+
+    try {
+      const notis = await db.getNotificaciones();
+      this.render(notis, list);
+      
+      // Mostrar badge si hay algo nuevo
+      if (notis.length > 0) {
+        const lastRead = Number(localStorage.getItem('last_read_notifications')) || 0;
+        const lastNotiTime = new Date(notis[0].created_at).getTime();
+        if (lastNotiTime > lastRead) {
+          badge.hidden = false;
+        }
+      }
+    } catch(err) {
+      console.warn("Error cargando notificaciones", err);
+    }
+  },
+
+  render(notis, container) {
+    if (notis.length === 0) {
+      container.innerHTML = '<p class="notificaciones-empty">No hay novedades recientes.</p>';
+      return;
+    }
+
+    const html = notis.map(n => {
+      let icon = '🔔';
+      if (n.tipo === 'foto') icon = '📸';
+      if (n.tipo === 'carta') icon = '💌';
+      if (n.tipo === 'pregunta') icon = '💭';
+
+      let dateStr = '';
+      try {
+        const d = new Date(n.created_at);
+        dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      } catch(_) {}
+
+      return `
+        <div class="notificacion-item">
+          <span class="noti-icon">${icon}</span>
+          <div class="noti-content">
+            <p class="noti-msg">${Sanitizer.clean(n.mensaje)}</p>
+            <span class="noti-date">${dateStr}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+};
+
+/* ═══════════════════════════════════════
+   9. UX ENHANCEMENTS (POLVO, PRELOADER)
+   ═══════════════════════════════════════ */
+const UXEnhancements = {
+  init() {
+    this.initPreloader();
+    this.initFairyDust();
+  },
+
+  initPreloader() {
+    const preloader = document.getElementById('preloader');
+    if(preloader) {
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          preloader.classList.add('hidden');
+          setTimeout(() => preloader.remove(), 1000);
+        }, 1200); 
+      });
+      if(document.readyState === 'complete') {
+        preloader.classList.add('hidden');
+        setTimeout(() => preloader.remove(), 1000);
+      }
+    }
+  },
+
+  initFairyDust() {
+    if (window.innerWidth < 768) return; 
+    let lastTime = 0;
+    window.addEventListener('mousemove', (e) => {
+      const now = Date.now();
+      if (now - lastTime < 50 && Math.random() > 0.3) return;
+      lastTime = now;
+
+      const dust = document.createElement('div');
+      dust.className = 'fairy-dust';
+      dust.style.left = (e.pageX - 2) + 'px';
+      dust.style.top = (e.pageY - 2) + 'px';
+      document.body.appendChild(dust);
+      
+      setTimeout(() => {
+        if(dust.parentNode) dust.remove();
+      }, 1000);
+    });
+  }
+};
+
+/* ═══════════════════════════════════════
+   10. MODALES
    ═══════════════════════════════════════ */
 function openModal(modal) {
   modal.hidden = false;
@@ -743,6 +1177,7 @@ function setupModalClose(modalId, closeBtnId) {
 (async function main() {
   PinSystem.init();
   AlbumDecorations.init();
+  UXEnhancements.init();
 
   const db = new AlbumDB();
 
@@ -769,9 +1204,17 @@ function setupModalClose(modalId, closeBtnId) {
     if(dateInput) dateInput.value = anniversary;
   }
 
-  // Canvas
-  SakuraCanvas.init();
-  SakuraCanvas.startAnimation(); 
+  // Canvas de Constelación
+  ConstellationCanvas.init();
+  ConstellationCanvas.startAnimation();
+
+  // Nuevos módulos
+  Fireflies.init();
+  LoveQuotes.init();
+  DailyQuestion.init(db);
+  ScrollUI.init();
+  EasterEgg.init();
+  Notifications.init(db);
 
   // Cargar fotos y cartas
   try {
@@ -802,7 +1245,7 @@ function setupModalClose(modalId, closeBtnId) {
       try {
         await db.setConfig('fechaAniversario', val);
         Counter.start(val);
-        SakuraCanvas.preRender();
+        ConstellationCanvas.generateStars();
         closeModal(document.getElementById('modal-settings'));
         showToast('Fecha guardada con éxito', 'success');
       } catch (err) {
@@ -911,7 +1354,14 @@ function setupModalClose(modalId, closeBtnId) {
         const fotos = await db.getAllFotos();
         renderGallery(fotos);
         closeModal(document.getElementById('modal-add'));
-        showToast('Memoria guardada 🌻', 'success');
+        showToast('Recuerdo guardado 💕', 'success');
+
+        // Notificación silenciosa
+        const miNombre = localStorage.getItem('mi_nombre_album') || 'Alguien';
+        db.addNotificacion({
+          tipo: 'foto',
+          mensaje: `${miNombre} ha añadido un nuevo recuerdo al álbum 📸`
+        }).catch(console.warn);
         pendingFile = null;
       } catch (err) {
         showToast('Error al guardar en la nube: ' + err.message, 'error');
@@ -955,7 +1405,13 @@ function setupModalClose(modalId, closeBtnId) {
         const cartas = await db.getAllCartas();
         renderCartas(cartas);
         closeModal(modalAddCarta);
-        showToast('Carta guardada con amor 💌', 'success');
+        showToast('Carta guardada 💌', 'success');
+        
+        // Notificación silenciosa
+        db.addNotificacion({
+          tipo: 'carta',
+          mensaje: `${firma || 'Alguien'} ha escrito una nueva carta de amor 💌`
+        }).catch(console.warn);
       } catch (err) {
         showToast('Error al guardar carta', 'error');
       } finally {
@@ -1052,4 +1508,7 @@ function setupModalClose(modalId, closeBtnId) {
   if (!anniversary && PinSystem.isUnlocked) {
     setTimeout(() => openModal(document.getElementById('modal-settings')), 1000);
   }
+
+  // Scroll reveal al final (después de que todo esté renderizado)
+  setTimeout(() => ScrollReveal.init(), 100);
 })();

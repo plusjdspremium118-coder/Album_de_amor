@@ -44,6 +44,9 @@ body {
   background-color: var(--bg-deep);
   min-height: 100vh;
   overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 .sr-only {
   position: absolute; width: 1px; height: 1px;
@@ -355,19 +358,26 @@ body::after {
 .counter-total { margin-top: 1.5rem; font-family: var(--font-hand); font-size: 1.4rem; color: var(--text-pink); }
 
 /* ══════════════════════════════════════════
-   CEREZO (CANVAS)
+   CONSTELACIÓN ESTELAR (CANVAS)
    ══════════════════════════════════════════ */
-#sakura-section { max-width: 900px; margin: 3rem auto; padding: 1.5rem; text-align: center; }
-.sakura-title { font-family: var(--font-title); font-size: clamp(2rem, 5vw, 3rem); color: var(--gold-light); }
-.sakura-subtitle { font-family: var(--font-decor); font-size: 0.9rem; color: var(--text-pink); margin: 0.5rem 0 1.5rem; }
-.canvas-wrapper {
-  background: rgba(20, 0, 5, 0.5);
-  border: 2px solid var(--gold-dim); border-radius: 8px;
-  padding: 5px; box-shadow: 0 10px 25px rgba(0,0,0,0.7);
-  max-width: 800px; margin: 0 auto;
+#constellation-section { max-width: 800px; margin: 3rem auto; padding: 1.5rem; text-align: center; }
+.constellation-header { margin-bottom: 2rem; }
+.constellation-title { font-family: var(--font-title); font-size: clamp(2rem, 5vw, 3rem); color: var(--gold-light); }
+.constellation-subtitle { font-family: var(--font-decor); font-size: 1rem; color: var(--gold-dim); margin: 0.5rem 0 1.5rem; letter-spacing: 1px; }
+.constellation-wrapper {
+  background: rgba(10, 5, 12, 0.9);
+  border: 1px solid var(--gold-dim); border-radius: 8px;
+  padding: 5px; box-shadow: 0 10px 40px rgba(0,0,0,0.9), inset 0 0 30px rgba(201,169,110,0.1);
+  width: 100%; max-width: 800px; margin: 0 auto;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  position: relative;
 }
-#sakura-canvas { width: 100%; border-radius: 4px; background: radial-gradient(circle at center, rgba(61,10,21,0.8) 0%, rgba(20,0,5,0.9) 100%); }
-.sakura-caption { margin-top: 1rem; font-family: var(--font-hand); font-size: 1.3rem; color: var(--gold-light); }
+#constellation-canvas { 
+  width: 100%; height: 100%; border-radius: 4px; 
+  background: radial-gradient(circle at center, #150a1a 0%, #050208 100%); 
+}
+.constellation-caption { margin-top: 2rem; font-family: var(--font-hand); font-size: 1.5rem; color: var(--gold-light); }
 
 /* ═══════════════════════════════════════════════════
    NOTAS DE AMOR
@@ -521,7 +531,8 @@ body::after {
 .photo-card::after { content: '❧'; bottom: -4px; right: -4px; transform: rotate(135deg); }
 
 .photo-card:hover {
-  transform: scale(1.08) rotate(0deg) translateY(-12px); z-index: 20;
+  transform: scale(1.08) rotate(0deg) translateY(-12px);
+  z-index: 20;
   animation-play-state: paused;
   box-shadow: 
     0 0 0 2px #4a3620, 0 0 0 6px var(--gold-light), 0 0 0 8px #5c4326,
@@ -635,6 +646,9 @@ body::after {
 }
 .btn-delete:hover { background: var(--text-pink); color: var(--bg-deep); }
 
+
+.constellation-wrapper { aspect-ratio: 3 / 2; }
+
 /* ══════════════════════════════════════════
    TOASTS & FOOTER
    ══════════════════════════════════════════ */
@@ -647,7 +661,11 @@ body::after {
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
 #album-footer { text-align: center; padding: 3rem 1rem; border-top: 1px solid var(--gold-dim); margin-top: 3rem; }
-.footer-text { font-family: var(--font-decor); font-size: 0.9rem; color: var(--gold-dim); letter-spacing: 2px; text-transform: uppercase; }
+.footer-text { 
+  font-family: var(--font-decor); font-size: 1.1rem; 
+  color: var(--gold-light); letter-spacing: 2px; 
+  text-transform: uppercase; text-shadow: 0 2px 5px rgba(0,0,0,0.8); 
+}
 .heart-beat { display: inline-block; animation: heartBeat 1.5s infinite; color: var(--text-pink); }
 @keyframes heartBeat { 0%,100%{transform:scale(1);} 15%{transform:scale(1.3);} 30%{transform:scale(1);} 45%{transform:scale(1.2);} }
 
@@ -677,4 +695,431 @@ body::after {
   .drop-zone { padding: 2rem 1rem; }
   #sakura-section { padding: 1rem 0.5rem; }
   .canvas-wrapper { padding: 3px; max-width: 100%; border-width: 1px; }
+}
+
+/* ══════════════════════════════════════════
+   LUCIÉRNAGAS DORADAS
+   ══════════════════════════════════════════ */
+.fireflies {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 2;
+  overflow: hidden;
+}
+.firefly {
+  position: absolute;
+  left: var(--x, 50vw); top: var(--y, 50vh);
+  width: var(--size, 3px); height: var(--size, 3px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,220,120,0.95), rgba(201,169,110,0.3));
+  box-shadow: 0 0 8px 2px rgba(255,220,120,0.6), 0 0 20px 5px rgba(201,169,110,0.3);
+  animation:
+    firefly-drift var(--dur, 15s) ease-in-out infinite alternate,
+    firefly-glow 3s ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0s);
+  opacity: 0;
+}
+@keyframes firefly-drift {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  15%  { opacity: 0.8; }
+  50%  { transform: translate(var(--drift-x, 100px), var(--drift-y, -80px)); opacity: 1; }
+  85%  { opacity: 0.6; }
+  100% { transform: translate(calc(var(--drift-x, 100px) * -0.5), calc(var(--drift-y, -80px) * -1.2)); opacity: 0; }
+}
+@keyframes firefly-glow {
+  0%   { box-shadow: 0 0 4px 1px rgba(255,220,120,0.4), 0 0 10px 3px rgba(201,169,110,0.15); }
+  100% { box-shadow: 0 0 12px 4px rgba(255,220,120,0.8), 0 0 30px 8px rgba(201,169,110,0.4); }
+}
+
+/* ══════════════════════════════════════════
+   SCROLL REVEAL ANIMATIONS
+   ══════════════════════════════════════════ */
+.reveal-section {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.reveal-section.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ══════════════════════════════════════════
+   FRASES DE AMOR (TYPEWRITER)
+   ══════════════════════════════════════════ */
+.quotes-section {
+  max-width: 750px; margin: 0 auto 1rem; padding: 2rem 2.5rem;
+  text-align: center; position: relative;
+  background: rgba(61, 10, 21, 0.5);
+  border: 1px solid var(--gold-dim);
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+  min-height: 80px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 0;
+}
+.quote-ornament {
+  font-size: 2.5rem; color: var(--gold-dim);
+  line-height: 1; flex-shrink: 0;
+  user-select: none;
+}
+.quote-ornament--right { align-self: flex-end; }
+.quote-text {
+  font-family: var(--font-title);
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  color: var(--gold-light);
+  line-height: 1.4;
+  display: inline;
+  min-height: 1.4em;
+}
+
+/* ══════════════════════════════════════════
+   PREGUNTA DEL DÍA
+   ══════════════════════════════════════════ */
+#question-section {
+  max-width: 700px; margin: 2rem auto; padding: 0 1.5rem;
+}
+.question-card {
+  background: linear-gradient(145deg, rgba(107,26,42,0.6), rgba(61,10,21,0.8));
+  border: 2px solid var(--gold-dim);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,169,110,0.15);
+  position: relative;
+  overflow: hidden;
+}
+.question-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(201,169,110,0.08), transparent 60%);
+  pointer-events: none;
+}
+.question-header {
+  display: flex; align-items: center; gap: 0.8rem;
+  margin-bottom: 1.5rem; flex-wrap: wrap;
+}
+.question-icon { font-size: 2rem; }
+.question-title {
+  font-family: var(--font-title);
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  color: var(--gold-light); flex: 1;
+}
+.question-badge {
+  font-family: var(--font-decor);
+  font-size: 0.7rem; color: var(--bg-deep);
+  background: var(--gold-main);
+  padding: 0.3rem 0.8rem; border-radius: 20px;
+  font-weight: bold; letter-spacing: 1px;
+}
+.daily-question-text {
+  font-family: var(--font-hand);
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  color: var(--text-main);
+  line-height: 1.5;
+  padding: 0.5rem 0;
+  position: relative; z-index: 1;
+}
+.question-footer {
+  margin-top: 1.5rem; padding-top: 1rem;
+  border-top: 1px solid rgba(201,169,110,0.15);
+}
+.question-hint {
+  font-family: var(--font-script);
+  font-size: 1rem; color: var(--text-pink);
+  opacity: 0.8;
+}
+
+/* ══════════════════════════════════════════
+   SCROLL PROGRESS BAR
+   ══════════════════════════════════════════ */
+.scroll-progress {
+  position: fixed; top: 0; left: 0;
+  width: 0%; height: 3px;
+  background: linear-gradient(90deg, var(--gold-main), var(--gold-light), var(--text-pink));
+  z-index: 8999;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 8px rgba(201,169,110,0.5);
+}
+
+/* ══════════════════════════════════════════
+   BOTÓN BACK TO TOP
+   ══════════════════════════════════════════ */
+.btn-top {
+  position: fixed; bottom: 2rem; left: 2rem;
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-mid), var(--bg-deep));
+  border: 2px solid var(--gold-main);
+  font-size: 1.5rem;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5), var(--glow-gold);
+  z-index: 100;
+  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  animation: float-btn 3s ease-in-out infinite alternate;
+}
+.btn-top:hover {
+  transform: translateY(-5px) rotate(360deg) scale(1.1);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.6), 0 0 30px rgba(201,169,110,0.8);
+}
+@keyframes float-btn {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-6px); }
+}
+
+/* ══════════════════════════════════════════
+   NOTIFICACIONES
+   ══════════════════════════════════════════ */
+.notification-badge {
+  position: absolute;
+  top: -2px; right: -2px;
+  width: 10px; height: 10px;
+  background-color: #ff3b30;
+  border-radius: 50%;
+  border: 2px solid var(--bg-deep);
+  animation: pulse-red 2s infinite;
+}
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(255,59,48, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(255,59,48, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,59,48, 0); }
+}
+
+.notificaciones-list {
+  display: flex; flex-direction: column; gap: 1rem;
+}
+.notificaciones-empty {
+  text-align: center; color: var(--gold-dim); font-family: var(--font-body);
+  padding: 2rem 0;
+}
+.notificacion-item {
+  background: rgba(255,255,255,0.05);
+  border-left: 3px solid var(--gold-main);
+  padding: 1rem; border-radius: 4px;
+  display: flex; align-items: center; gap: 1rem;
+}
+.noti-icon { font-size: 1.5rem; }
+.noti-content { flex: 1; }
+.noti-msg { font-family: var(--font-body); color: var(--text-main); font-size: 1rem; margin-bottom: 0.3rem; }
+.noti-date { font-family: var(--font-decor); color: var(--gold-dim); font-size: 0.75rem; }
+
+/* ══════════════════════════════════════════
+   PREGUNTA DEL DÍA (INTERACCIÓN)
+   ══════════════════════════════════════════ */
+.daily-question-interaction {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px dashed var(--gold-dim);
+}
+.dq-form {
+  display: flex; flex-direction: column; gap: 1rem;
+}
+.dq-input-group {
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.dq-input-group label {
+  font-family: var(--font-title); font-size: 1.1rem; color: var(--gold-light);
+}
+.dq-input-name, .dq-input-answer {
+  background: var(--bg-parchment);
+  border: 1px solid var(--gold-dim);
+  border-radius: 4px;
+  padding: 0.8rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--bg-deep);
+}
+.dq-input-answer {
+  resize: vertical; min-height: 80px; font-family: var(--font-hand); font-size: 1.3rem;
+}
+
+.dq-answers {
+  display: flex; flex-direction: column; gap: 1.5rem;
+}
+.dq-answer-box {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--gold-dim);
+  border-radius: 8px; padding: 1.2rem;
+  position: relative;
+}
+.dq-answer-author {
+  font-family: var(--font-title); color: var(--gold-main);
+  font-size: 1.2rem; margin-bottom: 0.5rem;
+}
+.dq-answer-text {
+  font-family: var(--font-hand); color: var(--text-main);
+  font-size: 1.4rem; line-height: 1.4;
+}
+
+.dq-locked {
+  text-align: center; padding: 2rem 1rem;
+  background: rgba(0,0,0,0.2); border-radius: 8px;
+  border: 1px dashed var(--gold-dim);
+}
+.dq-locked-icon {
+  font-size: 2.5rem; margin-bottom: 1rem;
+  display: inline-block;
+}
+.dq-locked-msg {
+  font-family: var(--font-body); color: var(--gold-light);
+  font-size: 1.1rem;
+}
+
+/* ══════════════════════════════════════════
+   EASTER EGG
+   ══════════════════════════════════════════ */
+.easter-egg-overlay {
+  position: fixed; inset: 0; z-index: 10001;
+  pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 1s ease;
+}
+.easter-egg-overlay.active { opacity: 1; }
+
+.easter-heart {
+  position: absolute; left: 50%; top: 50%;
+  font-size: 2.5rem;
+  animation: easter-explode 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes easter-explode {
+  0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 1; }
+  60% { opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(var(--scale, 1)) rotate(var(--rot, 360deg));
+    opacity: 0;
+  }
+}
+
+.easter-egg-message {
+  position: relative; z-index: 2;
+  background: rgba(61, 10, 21, 0.85);
+  border: 2px solid var(--gold-main);
+  border-radius: 12px;
+  padding: 2.5rem 3rem;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8), var(--glow-gold);
+  animation: easter-msg-in 1s 0.3s cubic-bezier(0.25, 1, 0.5, 1) both;
+  max-width: 500px; text-align: center;
+}
+@keyframes easter-msg-in {
+  0% { transform: scale(0.5) translateY(30px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.easter-egg-text {
+  font-family: var(--font-title);
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  color: var(--gold-light);
+  line-height: 1.5;
+}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE — NUEVOS ELEMENTOS
+   ══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .quotes-section { margin: 0 1rem 1rem; padding: 1.5rem; }
+  #question-section { padding: 0 1rem; }
+  .question-card { padding: 1.5rem; }
+}
+@media (max-width: 480px) {
+  .quotes-section { padding: 1rem; min-height: 60px; }
+  .quote-ornament { font-size: 1.8rem; }
+  .question-badge { font-size: 0.6rem; padding: 0.2rem 0.5rem; }
+  .easter-egg-message { padding: 1.5rem; margin: 1rem; }
+}
+
+/* =========================================
+   AJUSTES DE BOTONES FLOTANTES
+   ========================================= */
+/* Estilo base compartido para botones de la cabecera/flotantes (Notificaciones y Ajustes) */
+#btn-notifications, #btn-settings {
+  position: fixed;
+  top: 1.5rem;
+  z-index: 1000;
+  background: radial-gradient(circle at top left, rgba(107,26,42,0.95), rgba(61,10,21,0.95));
+  border: 2px solid var(--gold-main);
+  color: var(--gold-light);
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.6), inset 0 0 12px rgba(201,169,110,0.4);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+#btn-notifications:hover, #btn-settings:hover {
+  transform: scale(1.15) rotate(5deg);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.7), 0 0 15px rgba(201,169,110,0.6);
+  background: radial-gradient(circle at top left, rgba(120,30,50,1), rgba(80,15,30,1));
+}
+
+#btn-notifications { right: 4.5rem; }
+#btn-settings { right: 1.5rem; }
+
+.btn-top {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  left: auto !important;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--gold-main);
+  color: var(--bg-deep);
+  font-size: 1.5rem;
+  display: flex; align-items: center; justify-content: center;
+  border: none;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+  cursor: pointer;
+  z-index: 999;
+  transition: all 0.3s ease;
+}
+.btn-top:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(201,169,110,0.6);
+}
+
+/* =========================================
+   UX ENHANCEMENTS (MÚSICA, PRELOADER, DUST)
+   ========================================= */
+
+/* 1. Preloader de Sello de Cera */
+#preloader {
+  position: fixed; inset: 0; background: var(--bg-deep); z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 1s ease-in-out, visibility 1s ease-in-out;
+}
+#preloader.hidden { opacity: 0; visibility: hidden; }
+.wax-seal {
+  width: 100px; height: 100px; background: radial-gradient(circle, #8b1c2b, #4a0d15);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.9), inset 0 0 15px rgba(255,100,100,0.4);
+  border: 3px solid #5a0e19;
+  animation: pulseSeal 1.5s infinite alternate ease-in-out;
+}
+.seal-heart { font-size: 3.5rem; color: #d6334c; text-shadow: 0 2px 5px rgba(0,0,0,0.6); }
+@keyframes pulseSeal { 
+  0% { transform: scale(0.95); box-shadow: 0 0 10px rgba(201,169,110,0.2); } 
+  100% { transform: scale(1.05); box-shadow: 0 0 30px rgba(201,169,110,0.8); } 
+}
+
+/* 2. Polvo de Hadas (Cursor) */
+.fairy-dust {
+  position: absolute; width: 5px; height: 5px; background: var(--gold-light);
+  border-radius: 50%; pointer-events: none; z-index: 9999;
+  box-shadow: 0 0 10px var(--gold-main);
+  animation: dustFade 1s forwards cubic-bezier(0.25, 1, 0.5, 1);
+}
+@keyframes dustFade {
+  0% { opacity: 0.8; transform: scale(1) translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: scale(0.1) translateY(30px) rotate(90deg); }
+}
+
+@media (max-width: 768px) {
+  .btn-top { width: 44px; height: 44px; font-size: 1.3rem; bottom: 1.5rem; right: 1.5rem; }
+  #btn-notifications { top: 1.2rem; right: 4rem; padding: 0.5rem; }
+  #btn-settings { top: 1.2rem; right: 1.2rem; padding: 0.4rem; }
+  
+  /* Ajuste de constelación para móvil */
+  .constellation-title { font-size: 2rem; }
+  .constellation-wrapper { max-width: 100%; border-radius: 4px; }
 }

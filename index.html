@@ -13,6 +13,12 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- PRELOADER -->
+  <div id="preloader">
+    <div class="wax-seal">
+      <div class="seal-heart">❤</div>
+    </div>
+  </div>
 
   <!-- ═══════════ PANTALLA DE BLOQUEO (PIN) ═══════════ -->
   <div id="lock-screen" class="lock-screen">
@@ -91,16 +97,35 @@
     <!-- Click-to-float sunflowers container -->
     <div id="click-floats" class="click-floats" aria-hidden="true"></div>
 
+    <!-- Luciérnagas flotantes -->
+    <div id="fireflies" class="fireflies" aria-hidden="true"></div>
+
+    <!-- Barra de progreso de scroll -->
+    <div id="scroll-progress" class="scroll-progress" aria-hidden="true"></div>
+
     <!-- HEADER -->
     <header id="album-header">
       <div class="header-content">
         <h1 class="album-title">Nuestro Álbum</h1>
         <p class="album-subtitle">Una historia de amor escrita con recuerdos</p>
       </div>
-      <button id="btn-settings" class="btn-icon" aria-label="Configuración" title="Configuración">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
+      <div class="header-buttons" style="display: flex; gap: 0.5rem;">
+        <button id="btn-notifications" class="btn-icon" aria-label="Notificaciones" title="Notificaciones">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span id="notification-badge" class="notification-badge" hidden></span>
+        </button>
+        <button id="btn-settings" class="btn-icon" aria-label="Configuración" title="Configuración">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
     </header>
+
+    <!-- FRASES DE AMOR ROTATIVAS -->
+    <section id="quotes-section" class="quotes-section" aria-label="Frases de amor">
+      <span class="quote-ornament" aria-hidden="true">❝</span>
+      <p id="quote-text" class="quote-text"></p>
+      <span class="quote-ornament quote-ornament--right" aria-hidden="true">❞</span>
+    </section>
 
     <!-- CONTADOR -->
     <section id="counter-section" aria-label="Contador de tiempo juntos">
@@ -118,17 +143,41 @@
       <div class="counter-tape counter-tape--bottom" aria-hidden="true"></div>
     </section>
 
-    <!-- CEREZO CANVAS -->
-    <section id="sakura-section" aria-label="Árbol de cerezo">
-      <h2 class="section-title sakura-title">Nuestro Álbum de Amor</h2>
-      <p class="sakura-subtitle">Cada girasol representa un día juntos</p>
-      <div class="canvas-wrapper"><canvas id="sakura-canvas"></canvas></div>
-      <p id="sakura-caption" class="sakura-caption"></p>
+    <!-- PREGUNTA DEL DÍA -->
+    <section id="question-section" aria-label="Pregunta del Día">
+      <div class="question-card">
+        <div class="question-header">
+          <span class="question-icon" aria-hidden="true">💭</span>
+          <h2 class="question-title">Pregunta del Día</h2>
+          <span class="question-badge" id="question-day-badge">Día 1/365</span>
+        </div>
+        <p id="daily-question-text" class="daily-question-text">Cargando...</p>
+        
+        <div id="daily-question-interaction" class="daily-question-interaction">
+          <!-- Estado 1: Formulario de respuesta (se inyecta vía JS si no ha respondido) -->
+          <!-- Estado 2: Respuestas bloqueadas / visibles (se inyecta vía JS) -->
+        </div>
+
+        <div class="question-footer">
+          <span class="question-hint">💕 Las respuestas son secretas hasta que ambos respondan</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONSTELACIÓN CANVAS -->
+    <section id="constellation-section" aria-label="Constelación de Amor">
+      <div class="constellation-header">
+        <h2 class="section-title constellation-title">Nuestra Constelación</h2>
+        <p class="constellation-subtitle">Cada estrella es un día iluminando nuestro universo</p>
+      </div>
+      <div class="canvas-wrapper constellation-wrapper">
+        <canvas id="constellation-canvas"></canvas>
+      </div>
+      <p id="constellation-caption" class="constellation-caption"></p>
     </section>
 
     <!-- NOTAS DE AMOR -->
     <section id="notes-section" aria-label="Notas de Amor">
-      <h2 class="section-title text-center">Cartas para Ti</h2>
       <div class="notes-grid" id="notes-grid">
         <!-- Las cartas se inyectarán dinámicamente desde Supabase -->
       </div>
@@ -138,6 +187,7 @@
         </button>
       </div>
     </section>
+
 
     <!-- GALERÍA -->
     <section id="gallery-section" aria-label="Galería de recuerdos">
@@ -161,7 +211,13 @@
       </div>
     </section>
 
-    <footer id="album-footer"><p class="footer-text">Hecho con <span class="heart-beat">❤️</span> para nosotros</p></footer>
+    <!-- ═══════════ FOOTER ═══════════ -->
+    <footer id="album-footer">
+      <p class="footer-text">Con todo mi amor <span class="heart-beat">❤</span> para ti</p>
+    </footer>
+
+    <!-- Botón Back to Top -->
+    <button id="btn-top" class="btn-top" aria-label="Volver arriba" hidden>🌻</button>
   </div>
 
   <!-- MODAL: AÑADIR -->
@@ -251,8 +307,27 @@
     </div>
   </div>
 
+  <!-- MODAL: NOTIFICACIONES -->
+  <div id="modal-notificaciones" class="modal" hidden>
+    <div class="modal-overlay"></div>
+    <div class="modal-content scrapbook-card">
+      <button class="modal-close" id="modal-notificaciones-close">&times;</button>
+      <h3 class="modal-title">Novedades 🔔</h3>
+      <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+        <div id="notificaciones-list" class="notificaciones-list">
+          <!-- Las notificaciones se inyectarán aquí -->
+          <p class="notificaciones-empty">No hay novedades recientes.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EASTER EGG OVERLAY -->
+  <div id="easter-egg-overlay" class="easter-egg-overlay" hidden aria-hidden="true"></div>
+
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="app.js" defer></script>
 </body>
 </html>
